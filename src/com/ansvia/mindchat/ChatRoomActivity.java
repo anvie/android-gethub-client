@@ -85,5 +85,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         GethubClient gethub = GethubClient.getInstance();
 
         gethub.message(channel, text.getText().toString(), sessid);
+
+        text.setText("");
     }
 }
