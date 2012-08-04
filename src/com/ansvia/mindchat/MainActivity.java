@@ -6,7 +6,8 @@
 package com.ansvia.mindchat;
 
 import android.app.Activity;
-import android.content.Intent;
+import android.app.AlertDialog;
+import android.content.*;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -16,6 +17,31 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     Button loginButton = null;
 
+
+    private class ErrorHandler extends BroadcastReceiver {
+
+        Activity activity = null;
+
+        public ErrorHandler(Activity act){
+            this.activity = act;
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String data = intent.getStringExtra("data");
+            AlertDialog ad = new AlertDialog.Builder(activity).create();
+            ad.setCancelable(false);
+            ad.setMessage(data);
+            ad.setButton("OK", new DialogInterface.OnClickListener(){
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    dialogInterface.dismiss();
+                }
+            });
+            ad.show();
+        }
+    }
+
     /**
      * Called when the activity is first created.
      */
@@ -23,6 +49,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+
+        registerReceiver(new ErrorHandler(this), new IntentFilter("error"));
 
         loginButton = (Button)findViewById(R.id.login);
         loginButton.setOnClickListener(this);

@@ -5,7 +5,9 @@
 
 package com.ansvia.mindchat;
 
+import android.app.AlertDialog;
 import android.util.Log;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -13,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import com.ansvia.mindchat.exceptions.UnauthorizedException;
 
 public class GethubClient {
 
@@ -88,17 +91,23 @@ public class GethubClient {
      * @param password password.
      * @return session id if success otherwise null.
      */
-    public String authorize(String userName, String password){
+    public String authorize(String userName, String password) throws UnauthorizedException {
         String resultStr = sendPacketInternal(String.format(AUTHORIZE, genId(), userName, password));
         String rv = null;
         try {
             JSONObject jsonResult = new JSONObject(resultStr);
 
-            jsonResult = jsonResult.getJSONObject("result");
+            if(jsonResult.has("result")){
+                jsonResult = jsonResult.getJSONObject("result");
 
-            rv = jsonResult.getString("sessid");
+                rv = jsonResult.getString("sessid");
+            }else{
+                if (jsonResult.has("error")){
+                    throw new UnauthorizedException(jsonResult.getString("error"));
+                }
+            }
 
-        }catch (Exception e){
+        }catch (JSONException e){
             e.printStackTrace();
         }
         return rv;
