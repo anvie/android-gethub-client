@@ -242,13 +242,12 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             appendMessage(msg);
         }
 
-
-//        chatContainerFrame.post(new Runnable() {
-//            @Override
-//            public void run() {
-//                chatContainerFrame.smoothScrollTo(0, chatContainer.getBottom());
-//            }
-//        });
+        chatContainerFrame.post(new Runnable() {
+            @Override
+            public void run() {
+                chatContainerFrame.smoothScrollTo(0, chatContainer.getBottom());
+            }
+        });
 
     }
 
