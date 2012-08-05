@@ -5,8 +5,9 @@
 
 package com.ansvia.mindchat;
 
-import android.app.AlertDialog;
 import android.util.Log;
+import com.ansvia.mindchat.exceptions.UnauthorizedException;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -15,7 +16,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-import com.ansvia.mindchat.exceptions.UnauthorizedException;
+import java.util.LinkedList;
 
 public class GethubClient {
 
@@ -24,8 +25,10 @@ public class GethubClient {
 
     private static final String AUTHORIZE = "{\"ns\":\"authorize\",\"version\":" + API_VERSION + ",\"id\":\"%d\",\"userName\":\"%s\",\"password\":\"%s\"}";
     private static final String JOIN = "{\"ns\":\"chat::join\",\"version\":" + API_VERSION + ",\"id\":\"%d\",\"channel\":\"%s\",\"sessid\":\"%s\"}";
+    private static final String PARTICIPANTS = "{\"ns\":\"chat::channel::participants\",\"version\":" + API_VERSION + ",\"id\":\"%d\",\"channel\":\"%s\",\"sessid\":\"%s\"}";
     private static final String BIND = "{\"ns\":\"chat::bind\",\"version\":" + API_VERSION + ",\"id\":\"%d\",\"channel\":\"%s\",\"sessid\":\"%s\"}";
     private static final String MESSAGE = "{\"ns\":\"chat::message\",\"version\":" + API_VERSION + ",\"id\":\"%d\",\"channel\":\"%s\",\"sessid\":\"%s\",\"message\":\"%s\"}";
+    private static final String CHANNEL_LAST_MESSAGE = "{\"ns\":\"chat::channel::messages\",\"version\":" + API_VERSION + ",\"id\":\"%d\",\"channel\":\"%s\",\"sessid\":\"%s\"}";
 
 
     private Socket socket = null;
@@ -52,12 +55,7 @@ public class GethubClient {
         this.host = host;
         this.port = port;
 
-        try {
-            socket = new Socket(host, port);
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }
+        connectInternal(host, port);
     }
 
     /**
@@ -92,7 +90,7 @@ public class GethubClient {
      * @return session id if success otherwise null.
      */
     public String authorize(String userName, String password) throws UnauthorizedException {
-        String resultStr = sendPacketInternal(String.format(AUTHORIZE, genId(), userName, password));
+        String resultStr = sendPacketInternal(String.format(AUTHORIZE, genId(), userName, password), 1024);
         String rv = null;
         try {
             JSONObject jsonResult = new JSONObject(resultStr);
@@ -113,6 +111,7 @@ public class GethubClient {
         return rv;
     }
 
+
     /**
      * Join to channel.
      * @param channelName channel name target.
@@ -122,7 +121,7 @@ public class GethubClient {
     public boolean join(String channelName, String sessid){
         boolean rv = false;
         try {
-            String result = sendPacketInternal(String.format(JOIN, genId(), channelName, sessid));
+            String result = sendPacketInternal(String.format(JOIN, genId(), channelName, sessid), 1024);
 
             JSONObject jo = new JSONObject(result);
             jo = jo.getJSONObject("result");
@@ -133,6 +132,40 @@ public class GethubClient {
         }
         return rv;
     }
+
+
+    /**
+     * Get channel participants.
+     * @param channelName name of channel to get.
+     * @param sessid id of session.
+     * @return if success return string array of participants otherwise null.
+     */
+    public LinkedList<String> participants(String channelName, String sessid){
+        LinkedList<String> rv = null;
+
+        try {
+            String result = sendPacketInternal(String.format(PARTICIPANTS, genId(), channelName, sessid), 1024);
+
+            JSONObject jo = new JSONObject(result);
+            jo = jo.getJSONObject("result");
+
+            JSONArray parts = jo.getJSONArray("participants");
+
+            LinkedList<String> participants = new LinkedList<String>();
+
+            int i = 0;
+            while (i < parts.length()){
+                participants.add(parts.getString(i++));
+            }
+
+            rv = participants;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return rv;
+    }
+
+
 
     /**
      * Start binding to channel.
@@ -196,7 +229,7 @@ public class GethubClient {
         // @TODO(robin): don't hard-coded return result.
         boolean rv = true;
         try {
-            String result = sendPacketInternal(String.format(MESSAGE, genId(), channelName, sessid, message));
+            String result = sendPacketInternal(String.format(MESSAGE, genId(), channelName, sessid, message), 1024);
 
             JSONObject jo = new JSONObject(result);
             jo = jo.getJSONObject("result");
@@ -209,12 +242,36 @@ public class GethubClient {
     }
 
 
+    public LinkedList<String> messages(String channelName, String sessid) {
+        LinkedList<String> rv = new LinkedList<String>();
+        try {
+            String result = sendPacketInternal(String.format(CHANNEL_LAST_MESSAGE, genId(), channelName, sessid), 1024*4);
+
+            JSONObject jo = new JSONObject(result);
+            jo = jo.getJSONObject("result");
+
+            JSONArray messages = jo.getJSONArray("messages");
+
+            int i = 0;
+            while (i < messages.length()){
+                JSONObject msg = messages.getJSONObject(i++);
+                rv.add(msg.getString("user") + ": " + msg.getString("message"));
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return rv;
+    }
+
+
+    private int tried = 0;
+
     /**
      * Send packet to server.
      * @param data data to send.
      * @return string result (should decoded using json decoder).
      */
-    public String sendPacketInternal(String data){
+    public String sendPacketInternal(String data, int packetSize){
 
         String resultStr = "";
 
@@ -226,7 +283,7 @@ public class GethubClient {
 
             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            char [] buff = new char[1024];
+            char [] buff = new char[packetSize];
 
             int read = br.read(buff);
 
@@ -234,12 +291,41 @@ public class GethubClient {
                 resultStr = new String(buff, 0, read);
             }
 
+            tried = 0;
 
         }catch (Exception e){
             e.printStackTrace();
+
+            // reconnect
+            connectInternal(host, port);
+
+            tried++;
+            if(tried < 5){
+                resultStr = sendPacketInternal(data, packetSize);
+            }else{
+                Log.e(TAG, "Give up, cannot retry connect to gethub server.");
+                tried = 0;
+            }
+
         }
 
         return resultStr;
     }
 
+    /**
+     * internal method to connect to Gethub server.
+     * @param host host name or ip address.
+     * @param port port number.
+     */
+    private void connectInternal(String host, int port) {
+        try {
+            socket = new Socket(host, port);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public void logout() {
+        close();
+    }
 }

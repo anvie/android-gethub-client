@@ -6,12 +6,11 @@
 package com.ansvia.mindchat;
 
 import android.app.IntentService;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
-import android.os.Parcel;
-import android.os.Parcelable;
+import android.content.IntentFilter;
 import android.util.Log;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 /**
  * Main chat service.
@@ -19,62 +18,14 @@ import org.json.JSONObject;
 public class ChatService extends IntentService {
 
     private static final String TAG = "ChatService";
-    private static final String NS_MESSAGE = "chat::message";
+
     private static final String GETHUB_HOST = "www.gethub.us";
     private static final int GETHUB_PORT = 6060;
 
 
     // @TODO(*): jangan di hard-coded.
     private static final String CHANNEL = "www.gethub.us";
-
-
-
-    /**
-     * Class ini digunakan sebagai data receiver
-     * ketika binding sukses maka class ini
-     * akan mendapatkan push data dari server.
-     */
-    private class DataReceiver extends GethubClientDataReceiver {
-        private GethubClient gethub = null;
-        private String sessid = null;
-        private String currentUserName = null;
-
-        public DataReceiver(GethubClient gethub, String sessid, String currentUserName){
-            this.gethub = gethub;
-            this.sessid = sessid;
-            this.currentUserName = currentUserName;
-        }
-
-        /**
-         * Implementasi method ini untuk menghandle
-         * data dari server.
-         * data sudah berupa {{JSONObject}}
-         * @param data data dari server.
-         */
-        @Override
-        public void onReceive(JSONObject data) {
-            Log.d(TAG, "receiver got: " + data.toString());
-
-            try {
-                String ns = data.getString("ns");
-                if (ns.equals(NS_MESSAGE)){
-                    String message = data.getString("message");
-                    Log.i(TAG, "from " + data.getString("from") + ": " + message);
-//                    if(!data.getString("from").equals(currentUserName)){
-//                        gethub.message(CHANNEL, message + "? apa itu?", sessid);
-//                    }
-                    //appendMessage(data.getString("from") + ": " + message);
-                    Intent intent = new Intent("new.message");
-                    intent.putExtra("data", data.getString("from") + ": " + message);
-                    sendBroadcast(intent);
-                }
-            }catch (JSONException e){
-                e.printStackTrace();
-            }
-        }
-    }
-
-
+    private LogoutEventReceiver logoutEventReceiver;
 
 
     public ChatService(String name) {
@@ -87,9 +38,27 @@ public class ChatService extends IntentService {
 
 
     @Override
+    public void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(logoutEventReceiver);
+    }
+
+    private class LogoutEventReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            GethubClient gethub = GethubClient.getInstance();
+            gethub.logout();
+        }
+    }
+
+    @Override
     protected void onHandleIntent(Intent intent) {
 
         Log.d(TAG, "in onHandleIntent()");
+
+        this.logoutEventReceiver = new LogoutEventReceiver();
+        registerReceiver(this.logoutEventReceiver, new IntentFilter("logout"));
 
         GethubClient gethub = GethubClient.getInstance();
 
@@ -103,21 +72,22 @@ public class ChatService extends IntentService {
 
             if(sessid == null){
                 Log.i(TAG, "Cannot authorize user");
+                showError("Cannot authorize user, check your connection.");
                 return;
             }
 
             if(!gethub.join(CHANNEL, sessid)){
                 Log.i(TAG, "Cannot join to channel");
+                showError("Cannot join to channel " + CHANNEL);
                 return;
             }
 
-            DataReceiver dataRec = new DataReceiver(gethub, sessid, intent.getStringExtra("userName"));
-
+            //DataReceiver dataRec = new DataReceiver(gethub, sessid, intent.getStringExtra("userName"));
+            PacketHandler handler = new PacketHandler(this, gethub, sessid, intent.getStringExtra("userName"));
 
             Intent chatRoom = new Intent(this, ChatRoomActivity.class);
 
             chatRoom.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
 
             chatRoom.putExtra("sessid", sessid);
             chatRoom.putExtra("userName", intent.getStringExtra("userName"));
@@ -126,14 +96,18 @@ public class ChatService extends IntentService {
 
             startActivity(chatRoom);
 
+            gethub.bind(CHANNEL, sessid, handler);
 
-            gethub.bind(CHANNEL, sessid, dataRec);
         }catch (Exception e){
-            Intent errorIntent = new Intent("error");
-            errorIntent.putExtra("data", e.getMessage());
-            sendBroadcast(errorIntent);
+            showError(e.getMessage());
         }
 
+    }
+
+    private void showError(String msg){
+        Intent errorIntent = new Intent("error");
+        errorIntent.putExtra("data", msg);
+        sendBroadcast(errorIntent);
     }
 }
 

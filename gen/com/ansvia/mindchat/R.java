@@ -11,12 +11,17 @@ public final class R {
     public static final class attr {
     }
     public static final class id {
-        public static final int btnSend=0x7f040002;
-        public static final int chatContainer=0x7f040000;
-        public static final int inputMessage=0x7f040001;
-        public static final int inputPassword=0x7f040004;
-        public static final int inputUserName=0x7f040003;
-        public static final int login=0x7f040005;
+        public static final int btnSend=0x7f040004;
+        public static final int chatContainer=0x7f040002;
+        public static final int chatContainerFrame=0x7f040001;
+        public static final int inputMessage=0x7f040003;
+        public static final int inputPassword=0x7f040008;
+        public static final int inputUserName=0x7f040006;
+        public static final int login=0x7f040009;
+        public static final int logout=0x7f04000a;
+        public static final int mainContainer=0x7f040000;
+        public static final int txtPassword=0x7f040007;
+        public static final int txtUserName=0x7f040005;
     }
     public static final class layout {
         public static final int chat_room=0x7f020000;
