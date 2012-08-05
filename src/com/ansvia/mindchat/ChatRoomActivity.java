@@ -19,10 +19,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 
 import java.io.IOException;
@@ -46,6 +47,12 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     LinearLayout chatContainer = null;
     private LinkedList<String> participants = null;
     private String userName;
+    private BroadcastReceiver initHandler;
+    private boolean initialized = false;
+    private NewMessageReceiver messageReceiver;
+    private ParticipantReceiver participantReceiver;
+    private boolean registered = false;
+    private ScrollView chatContainerFrame;
 
 
     private class NewMessageReceiver extends BroadcastReceiver {
@@ -85,8 +92,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             final int actualHeight = getHeight();
 
             if (actualHeight > proposedheight){
-                // Keyboard is shown
-                Log.d(TAG, "Keyboard is shown");
+                // keyboard is shown
 
                 DisplayMetrics metrics = new DisplayMetrics();
                 getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -97,8 +103,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
                         metrics.widthPixels, proposedheight - 100));
 
             } else {
-                // Keyboard is hidden
-                Log.d(TAG, "Keyboard is hidden");
+                // keyboard is hidden
 
                 DisplayMetrics metrics = new DisplayMetrics();
                 getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -138,35 +143,73 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         //setContentView(R.layout.chat_room);
         setContentView(new MainLinearLayout(this, null));
 
-        registerReceiver(new NewMessageReceiver(), new IntentFilter("new.message"));
-        registerReceiver(new ParticipantReceiver(), new IntentFilter("participant"));
+        this.messageReceiver = new NewMessageReceiver();
+        this.participantReceiver = new ParticipantReceiver();
+        findViewById(R.id.lblPleaseWait).setVisibility(View.VISIBLE);
 
-        GethubClient gethub = GethubClient.getInstance();
+        this.initHandler = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
 
-        Bundle extras = getIntent().getExtras();
+                GethubClient gethub = GethubClient.getInstance();
 
-        this.sessid = extras.getString("sessid");
-        this.channel = extras.getString("channel");
-        this.userName = extras.getString("userName");
+                sessid = intent.getStringExtra("sessid");
+                channel = intent.getStringExtra("channel");
+                userName = intent.getStringExtra("userName");
 
-        this.participants = gethub.participants(channel, sessid);
+                participants = gethub.participants(channel, sessid);
 
-        this.chatMessages = gethub.messages(channel, sessid);
+                chatMessages = gethub.messages(channel, sessid);
 
-        initializeUi();
+                findViewById(R.id.lblPleaseWait).setVisibility(View.INVISIBLE);
 
+                initializeUi();
+
+                initialized = true;
+
+            }
+        };
+
+        if(!registered){
+            registerReceiver(this.messageReceiver, new IntentFilter("new.message"));
+            registerReceiver(this.participantReceiver, new IntentFilter("participant"));
+            registerReceiver(this.initHandler, new IntentFilter("chatroom.init"));
+            registered = true;
+        }
+
+
+        //Bundle extras = getIntent().getExtras();
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(this.messageReceiver);
+        unregisterReceiver(this.participantReceiver);
+        unregisterReceiver(this.initHandler);
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         setContentView(R.layout.chat_room);
-        initializeUi();
+        if(initialized){
+            initializeUi();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
     }
 
     private void initializeUi() {
+        chatContainerFrame = (ScrollView)findViewById(R.id.chatContainerFrame);
         chatContainer = (LinearLayout)findViewById(R.id.chatContainer);
 
+        Button btnSend = (Button)findViewById(R.id.btnSend);
+        btnSend.setOnClickListener(this);
 
 //        GethubClient gethub = GethubClient.getInstance();
 
@@ -181,20 +224,17 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             appendStatus(strb.toString().substring(0, strb.toString().length()-2));
         }
 
-        Button btnSend = (Button)findViewById(R.id.btnSend);
-        btnSend.setOnClickListener(this);
-
         DisplayMetrics metrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
 
-        ScrollView chatContainerFrame = (ScrollView)findViewById(R.id.chatContainerFrame);
+        //final ScrollView chatContainer = (ScrollView)findViewById(R.id.chatContainer);
         //LinearLayout mainContainer = (LinearLayout)findViewById(R.id.mainContainer);
 
 //        Log.d(TAG, "outer: " + mainContainer.getLayoutParams().width + ", " + mainContainer.getLayoutParams().height);
 //        Log.d(TAG, "inner: " + chatContainerFrame.getLayoutParams().width + ", " + chatContainerFrame.getLayoutParams().height);
 //        Log.d(TAG, "chatCont: " + chatContainer.getLayoutParams().width + ", " + chatContainer.getLayoutParams().height);
 
-        chatContainerFrame.setLayoutParams(new LinearLayout.LayoutParams(
+        chatContainer.setLayoutParams(new ScrollView.LayoutParams(
                 metrics.widthPixels, metrics.heightPixels - 200));
 
         // fill with chat messages
@@ -202,40 +242,77 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             appendMessage(msg);
         }
 
+
+//        chatContainerFrame.post(new Runnable() {
+//            @Override
+//            public void run() {
+//                chatContainerFrame.smoothScrollTo(0, chatContainer.getBottom());
+//            }
+//        });
+
     }
 
+    /**
+     * Add status to chat room.
+     * @param status text to add.
+     */
     private void appendStatus(String status) {
 
         TextView text = new TextView(this);
         text.setId((int)System.currentTimeMillis());
         text.setText(status);
         text.setTextColor(Color.parseColor("#8AE6B8"));
+        text.setGravity(Gravity.BOTTOM);
+
         text.setLayoutParams(new AbsListView.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
+
         chatContainer.addView(text);
         chatContainer.refreshDrawableState();
+
+        chatContainerFrame.scrollTo(0, chatContainer.getBottom());
+
     }
 
+    /**
+     * Add new chat message to chatroom.
+     * @param message text to add.
+     */
     public void appendMessage(String message){
 
         TextView text = new TextView(this);
         text.setId((int)System.currentTimeMillis());
         text.setText(message);
+        text.setGravity(Gravity.BOTTOM);
         text.setLayoutParams(new AbsListView.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
         chatContainer.addView(text);
         chatContainer.refreshDrawableState();
+
+        chatContainerFrame.scrollTo(0, chatContainer.getBottom());
     }
 
+    /**
+     * Method ini dipanggil ketika user tap button send.
+     * untuk mengirim pesan.
+     * @param view view.
+     */
     @Override
     public void onClick(View view) {
         EditText text = (EditText)findViewById(R.id.inputMessage);
 
         GethubClient gethub = GethubClient.getInstance();
 
-        gethub.message(channel, text.getText().toString(), sessid);
+        String message = text.getText().toString();
+
+        if (message.length() > 0){
+            gethub.message(channel, message, sessid);
+
+            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(text.getWindowToken(), 0);
+        }
 
         text.setText("");
     }

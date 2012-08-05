@@ -105,7 +105,16 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         startService(svc);
 
+        Intent chatRoom = new Intent(this, ChatRoomActivity.class);
 
+        chatRoom.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+//        chatRoom.putExtra("sessid", sessid);
+//        chatRoom.putExtra("userName", intent.getStringExtra("userName"));
+//        chatRoom.putExtra("password", intent.getStringExtra("password"));
+//        chatRoom.putExtra("channel", CHANNEL);
+
+        startActivity(chatRoom);
 
 
         textUserName.setVisibility(View.INVISIBLE);

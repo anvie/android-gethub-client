@@ -82,19 +82,15 @@ public class ChatService extends IntentService {
                 return;
             }
 
+            Intent chatRoomInitial = new Intent("chatroom.init");
+            chatRoomInitial.putExtra("sessid", sessid);
+            chatRoomInitial.putExtra("userName", intent.getStringExtra("userName"));
+            chatRoomInitial.putExtra("channel", CHANNEL);
+            sendBroadcast(chatRoomInitial);
+
             //DataReceiver dataRec = new DataReceiver(gethub, sessid, intent.getStringExtra("userName"));
+
             PacketHandler handler = new PacketHandler(this, gethub, sessid, intent.getStringExtra("userName"));
-
-            Intent chatRoom = new Intent(this, ChatRoomActivity.class);
-
-            chatRoom.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-            chatRoom.putExtra("sessid", sessid);
-            chatRoom.putExtra("userName", intent.getStringExtra("userName"));
-            chatRoom.putExtra("password", intent.getStringExtra("password"));
-            chatRoom.putExtra("channel", CHANNEL);
-
-            startActivity(chatRoom);
 
             gethub.bind(CHANNEL, sessid, handler);
 

@@ -19,7 +19,9 @@
             android:id="@+id/chatContainerFrame"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
+            android:fillViewport="true"
             >
+
         <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
                       android:id="@+id/chatContainer"
                       android:layout_width="fill_parent"
@@ -27,11 +29,13 @@
                       android:orientation="vertical"
                 >
 
-            <!--<TextView-->
-                    <!--android:text="Seharusnya ada welcome di bawah ini"-->
-                    <!--android:layout_width="fill_parent"-->
-                    <!--android:layout_height="wrap_content"-->
-                    <!--/>-->
+            <TextView
+                    android:id="@+id/lblPleaseWait"
+                    android:text="Fetching data from server, please wait..."
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="top"
+                    />
 
 
         </LinearLayout>
