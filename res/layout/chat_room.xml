@@ -31,7 +31,7 @@
 
             <TextView
                     android:id="@+id/lblPleaseWait"
-                    android:text="Fetching data from server, please wait..."
+                    android:text="Logging in, please wait..."
                     android:layout_width="fill_parent"
                     android:layout_height="wrap_content"
                     android:gravity="top"

@@ -17,11 +17,9 @@ import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -58,6 +56,8 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     private Intent svc;
     private ServiceConnection connHandler;
     private boolean back = false;
+    private ErrorHandler errorReceiver;
+    private GlobalState globalState = GlobalState.getInstance();
 
 
     private class NewMessageReceiver extends BroadcastReceiver {
@@ -65,7 +65,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         public void onReceive(Context context, Intent intent) {
             String text = intent.getStringExtra("data");
             Boolean self = intent.getBooleanExtra("self", false);
-            chatMessages.add(text);
+            //chatMessages.add(text);
             appendMessage(text);
             if(!self){
 
@@ -131,6 +131,21 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         }
     }
 
+    private class MyErrorHandler extends ErrorHandler {
+
+        public MyErrorHandler(Activity act) {
+            super(act);
+        }
+
+        @Override
+        void onOk() {
+            super.onOk();
+            onBackPressed();
+            globalState.authFailed = true;
+            ChatRoomActivity.this.finish();
+        }
+
+    }
 
 
     private void playSound() {
@@ -185,7 +200,11 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             }
         };
 
+        this.errorReceiver = new MyErrorHandler(this);
+
+
         registerReceiver(this.messageReceiver, new IntentFilter("new.message"));
+        registerReceiver(this.errorReceiver, new IntentFilter("error"));
         registerReceiver(this.participantReceiver, new IntentFilter("participant"));
         registerReceiver(this.initHandler, new IntentFilter("chatroom.init"));
 
@@ -207,17 +226,17 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         svc.putExtra("userName", userName);
         svc.putExtra("password", password);
 
-        this.connHandler = new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                Log.d(TAG, "Service connected");
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName componentName) {
-                Log.d(TAG, "Service disconnected");
-            }
-        };
+//        this.connHandler = new ServiceConnection() {
+//            @Override
+//            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+//                Log.d(TAG, "Service connected");
+//            }
+//
+//            @Override
+//            public void onServiceDisconnected(ComponentName componentName) {
+//                Log.d(TAG, "Service disconnected");
+//            }
+//        };
 
         startService(svc);
 
@@ -246,6 +265,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         unregisterReceiver(this.messageReceiver);
         unregisterReceiver(this.participantReceiver);
         unregisterReceiver(this.initHandler);
+        unregisterReceiver(this.errorReceiver);
         //unbindService(this.connHandler);
         stopService(svc);
         super.onDestroy();
@@ -267,6 +287,9 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         SharedPreferences.Editor sp = PreferenceManager.getDefaultSharedPreferences(this).edit();
         sp.putString("last_activity", MainActivity.class.getSimpleName());
         sp.commit();
+        globalState.authFailed = false;
+        Intent intent = new Intent("logout");
+        sendBroadcast(intent);
         this.back = true;
     }
 

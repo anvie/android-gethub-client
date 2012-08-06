@@ -37,6 +37,7 @@ public class GethubClient {
     private int port = 6060;
 
     private static GethubClient ourInstance = new GethubClient();
+    private Socket bindingSocket;
 
     public static GethubClient getInstance() {
         return ourInstance;
@@ -65,6 +66,10 @@ public class GethubClient {
         if(socket != null){
             try {
                 socket.close();
+                if (bindingSocket != null){
+                    bindingSocket.close();
+                    bindingSocket = null;
+                }
             }catch (IOException e){
                 e.printStackTrace();
             }
@@ -167,26 +172,28 @@ public class GethubClient {
 
 
 
+
     /**
      * Start binding to channel.
-     * this will creating new connection to allow us binding without
+     * this use independent {{bindingSocket}} connection to allow us binding without
      * worry about race condition in multi threading environment.
+     * Notice: this function is blocking.
      * @param channelName name of channel to bind.
      * @param sessid session id.
      */
     public void bind(String channelName, String sessid, GethubClientDataReceiver receiver){
-        Socket s = null;
+        bindingSocket = null;
         try {
 
             String data = String.format(BIND, genId(), channelName, sessid);
 
-            s = new Socket(this.host, this.port);
+            bindingSocket = new Socket(this.host, this.port);
 
-            OutputStream os = s.getOutputStream();
+            OutputStream os = bindingSocket.getOutputStream();
 
             os.write((data + "\n").getBytes());
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            BufferedReader br = new BufferedReader(new InputStreamReader(bindingSocket.getInputStream()));
 
             char [] buff = new char[1024];
 
@@ -208,9 +215,9 @@ public class GethubClient {
         }catch (Exception e){
             e.printStackTrace();
         }finally {
-            if(s!=null){
+            if(bindingSocket!=null){
                 try {
-                    s.close();
+                    bindingSocket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

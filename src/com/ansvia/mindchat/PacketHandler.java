@@ -67,6 +67,7 @@ public class PacketHandler extends GethubClientDataReceiver {
                 intent.putExtra("self", data.getString("from").equalsIgnoreCase(currentUserName));
 
                 sendBroadcast(intent);
+
             }else if(ns.equals(Namespace.CHANNEL_PARTICIPANTS)){
 
             }else if(ns.equals(Namespace.JOIN)){

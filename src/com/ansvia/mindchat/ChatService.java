@@ -109,6 +109,8 @@ public class ChatService extends IntentService {
     public void onDestroy() {
         super.onDestroy();
         unregisterReceiver(logoutEventReceiver);
+        GethubClient gethub = GethubClient.getInstance();
+        gethub.close();
     }
 
 
