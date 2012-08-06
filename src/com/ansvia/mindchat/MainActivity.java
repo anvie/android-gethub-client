@@ -76,6 +76,12 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 findViewById(R.id.inputPassword).setVisibility(View.VISIBLE);
                 loginButton.setVisibility(View.VISIBLE);
                 loginButton.setEnabled(true);
+
+                SharedPreferences.Editor sp = PreferenceManager.getDefaultSharedPreferences(MainActivity.this).edit();
+
+                sp.remove("userName");
+                sp.remove("password");
+                sp.commit();
             }
         });
 

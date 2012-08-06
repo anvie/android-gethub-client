@@ -6,6 +6,9 @@
 package com.ansvia.mindchat;
 
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.*;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -65,6 +68,16 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             chatMessages.add(text);
             appendMessage(text);
             if(!self){
+
+                NotificationManager nm = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+                Notification ntf = new Notification(R.drawable.icon, text, System.currentTimeMillis());
+                ntf.flags |= Notification.FLAG_ONLY_ALERT_ONCE;
+                //ntf.number += 1;
+
+                PendingIntent activity = PendingIntent.getActivity(ChatRoomActivity.this, 0, ChatRoomActivity.this.getIntent(), 0);
+                ntf.setLatestEventInfo(ChatRoomActivity.this, "New chat messages", text, activity);
+                nm.notify(0, ntf);
+
                 playSound();
             }
         }
@@ -101,7 +114,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
 
                 ScrollView chatContainerFrame = (ScrollView)findViewById(R.id.chatContainerFrame);
 
-                chatContainerFrame.setLayoutParams(new LinearLayout.LayoutParams(
+                chatContainerFrame.setLayoutParams(new RelativeLayout.LayoutParams(
                         metrics.widthPixels, proposedheight - 100));
 
             } else {
@@ -111,7 +124,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
                 getWindowManager().getDefaultDisplay().getMetrics(metrics);
 
                 ScrollView chatContainerFrame = (ScrollView)findViewById(R.id.chatContainerFrame);
-                chatContainerFrame.setLayoutParams(new LinearLayout.LayoutParams(
+                chatContainerFrame.setLayoutParams(new RelativeLayout.LayoutParams(
                         metrics.widthPixels, metrics.heightPixels - 200));
             }
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -241,7 +254,8 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        setContentView(R.layout.chat_room);
+        //setContentView(R.layout.chat_room);
+        setContentView(new MainLinearLayout(this, null));
         if(initialized){
             initializeUi();
         }
@@ -343,6 +357,13 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         chatContainer.refreshDrawableState();
 
         chatContainerFrame.scrollTo(0, chatContainer.getBottom());
+
+        chatContainerFrame.post(new Runnable() {
+            @Override
+            public void run() {
+                chatContainerFrame.smoothScrollTo(0, chatContainer.getBottom());
+            }
+        });
     }
 
     /**
