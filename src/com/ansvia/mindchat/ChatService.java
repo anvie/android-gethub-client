@@ -19,10 +19,10 @@ public class ChatService extends IntentService {
 
     private static final String TAG = "ChatService";
 
-    //private static final String GETHUB_HOST = "www.gethub.us";
+    private static final String GETHUB_HOST = "www.gethub.us";
     //private static final int GETHUB_PORT = 6060;
 
-    private static final String GETHUB_HOST = "10.0.2.2";
+    //private static final String GETHUB_HOST = "10.0.2.2";
     private static final int GETHUB_PORT = 6060;
 
 

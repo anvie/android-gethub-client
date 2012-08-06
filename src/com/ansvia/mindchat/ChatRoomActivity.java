@@ -54,7 +54,6 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     private ParticipantReceiver participantReceiver;
     private ScrollView chatContainerFrame;
     private Intent svc;
-    private ServiceConnection connHandler;
     private boolean back = false;
     private ErrorHandler errorReceiver;
     private GlobalState globalState = GlobalState.getInstance();
@@ -65,7 +64,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         public void onReceive(Context context, Intent intent) {
             String text = intent.getStringExtra("data");
             Boolean self = intent.getBooleanExtra("self", false);
-            //chatMessages.add(text);
+            chatMessages.add(text);
             appendMessage(text);
             if(!self){
 
@@ -148,6 +147,9 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     }
 
 
+    /**
+     * Play notification sound.
+     */
     private void playSound() {
         Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         if (alert!=null){
@@ -176,6 +178,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         this.messageReceiver = new NewMessageReceiver();
         this.participantReceiver = new ParticipantReceiver();
         this.initHandler = new BroadcastReceiver() {
+
             @Override
             public void onReceive(Context context, Intent intent) {
 
@@ -201,7 +204,6 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         };
 
         this.errorReceiver = new MyErrorHandler(this);
-
 
         registerReceiver(this.messageReceiver, new IntentFilter("new.message"));
         registerReceiver(this.errorReceiver, new IntentFilter("error"));
