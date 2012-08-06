@@ -6,10 +6,7 @@
 package com.ansvia.mindchat;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.*;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.media.AudioManager;
@@ -17,8 +14,11 @@ import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -51,8 +51,10 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     private boolean initialized = false;
     private NewMessageReceiver messageReceiver;
     private ParticipantReceiver participantReceiver;
-    private boolean registered = false;
     private ScrollView chatContainerFrame;
+    private Intent svc;
+    private ServiceConnection connHandler;
+    private boolean back = false;
 
 
     private class NewMessageReceiver extends BroadcastReceiver {
@@ -145,8 +147,6 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
 
         this.messageReceiver = new NewMessageReceiver();
         this.participantReceiver = new ParticipantReceiver();
-        findViewById(R.id.lblPleaseWait).setVisibility(View.VISIBLE);
-
         this.initHandler = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -162,6 +162,8 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
                 chatMessages = gethub.messages(channel, sessid);
 
                 findViewById(R.id.lblPleaseWait).setVisibility(View.INVISIBLE);
+                findViewById(R.id.inputMessage).setVisibility(View.VISIBLE);
+                findViewById(R.id.btnSend).setVisibility(View.VISIBLE);
 
                 initializeUi();
 
@@ -170,24 +172,70 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             }
         };
 
-        if(!registered){
-            registerReceiver(this.messageReceiver, new IntentFilter("new.message"));
-            registerReceiver(this.participantReceiver, new IntentFilter("participant"));
-            registerReceiver(this.initHandler, new IntentFilter("chatroom.init"));
-            registered = true;
+        registerReceiver(this.messageReceiver, new IntentFilter("new.message"));
+        registerReceiver(this.participantReceiver, new IntentFilter("participant"));
+        registerReceiver(this.initHandler, new IntentFilter("chatroom.init"));
+
+        findViewById(R.id.lblPleaseWait).setVisibility(View.VISIBLE);
+        findViewById(R.id.inputMessage).setVisibility(View.INVISIBLE);
+        findViewById(R.id.btnSend).setVisibility(View.INVISIBLE);
+
+        if(svc != null){
+            stopService(svc);
         }
 
+        svc = new Intent(this, ChatService.class);
 
-        //Bundle extras = getIntent().getExtras();
+        Intent intent = getIntent();
+
+        String userName = intent.getStringExtra("userName");
+        String password = intent.getStringExtra("password");
+
+        svc.putExtra("userName", userName);
+        svc.putExtra("password", password);
+
+        this.connHandler = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                Log.d(TAG, "Service connected");
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName componentName) {
+                Log.d(TAG, "Service disconnected");
+            }
+        };
+
+        startService(svc);
+
+        //bindService(svc, connHandler,BIND_AUTO_CREATE | BIND_DEBUG_UNBIND);
 
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        this.back = false;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if(!this.back){
+            SharedPreferences.Editor sp = PreferenceManager.getDefaultSharedPreferences(this).edit();
+            sp.putString("last_activity", getClass().getSimpleName());
+            sp.commit();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
-        super.onDestroy();
         unregisterReceiver(this.messageReceiver);
         unregisterReceiver(this.participantReceiver);
         unregisterReceiver(this.initHandler);
+        //unbindService(this.connHandler);
+        stopService(svc);
+        super.onDestroy();
     }
 
     @Override
@@ -202,6 +250,10 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     @Override
     public void onBackPressed() {
         super.onBackPressed();
+        SharedPreferences.Editor sp = PreferenceManager.getDefaultSharedPreferences(this).edit();
+        sp.putString("last_activity", MainActivity.class.getSimpleName());
+        sp.commit();
+        this.back = true;
     }
 
     private void initializeUi() {
@@ -234,8 +286,8 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
 //        Log.d(TAG, "inner: " + chatContainerFrame.getLayoutParams().width + ", " + chatContainerFrame.getLayoutParams().height);
 //        Log.d(TAG, "chatCont: " + chatContainer.getLayoutParams().width + ", " + chatContainer.getLayoutParams().height);
 
-        chatContainer.setLayoutParams(new ScrollView.LayoutParams(
-                metrics.widthPixels, metrics.heightPixels - 200));
+//        chatContainer.setLayoutParams(new ScrollView.LayoutParams(
+//                metrics.widthPixels, metrics.heightPixels - 200));
 
         // fill with chat messages
         for(String msg : chatMessages){

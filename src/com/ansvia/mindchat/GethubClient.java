@@ -235,6 +235,8 @@ public class GethubClient {
             jo = jo.getJSONObject("result");
 
             Log.d(TAG, jo.toString());
+        }catch(JSONException e){
+            Log.e(TAG, e.getMessage());
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -242,6 +244,12 @@ public class GethubClient {
     }
 
 
+    /**
+     * Get last 30 messages from server on channel.
+     * @param channelName name of channel to get.
+     * @param sessid id of session.
+     * @return array of pairing user name and message.
+     */
     public LinkedList<String> messages(String channelName, String sessid) {
         LinkedList<String> rv = new LinkedList<String>();
         try {

@@ -19,7 +19,10 @@ public class ChatService extends IntentService {
 
     private static final String TAG = "ChatService";
 
-    private static final String GETHUB_HOST = "www.gethub.us";
+    //private static final String GETHUB_HOST = "www.gethub.us";
+    //private static final int GETHUB_PORT = 6060;
+
+    private static final String GETHUB_HOST = "10.0.2.2";
     private static final int GETHUB_PORT = 6060;
 
 
@@ -37,11 +40,6 @@ public class ChatService extends IntentService {
     }
 
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(logoutEventReceiver);
-    }
 
     private class LogoutEventReceiver extends BroadcastReceiver {
 
@@ -58,6 +56,7 @@ public class ChatService extends IntentService {
         Log.d(TAG, "in onHandleIntent()");
 
         this.logoutEventReceiver = new LogoutEventReceiver();
+
         registerReceiver(this.logoutEventReceiver, new IntentFilter("logout"));
 
         GethubClient gethub = GethubClient.getInstance();
@@ -105,5 +104,13 @@ public class ChatService extends IntentService {
         errorIntent.putExtra("data", msg);
         sendBroadcast(errorIntent);
     }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(logoutEventReceiver);
+    }
+
+
 }
 
