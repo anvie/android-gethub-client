@@ -234,11 +234,32 @@ public class GethubClient {
      * @param sessid id of session.
      * @return true if success otherwise not.
      */
-    public boolean message(String channelName, String message, String sessid){
+    public boolean message(String channelName, String message, String sessid) throws IOException {
         // @TODO(robin): don't hard-coded return result.
         boolean rv = true;
         try {
-            String result = sendPacketInternal(String.format(MESSAGE, genId(), channelName, sessid, message), 1024);
+
+            String result = "";
+            boolean done = false;
+            int tried = 0;
+
+            while(!done){
+                try {
+                    result = sendPacketInternal(String.format(MESSAGE, genId(), channelName, sessid, message), 1024);
+                    done = true;
+                }catch (IOException e){
+                    done = false;
+                    tried++;
+                    if (tried > 3){
+                        throw new IOException("Connection lost. Tried in 3 times with no luck :(.");
+                    }else{
+                        try {
+                            // reconnect
+                            connectInternal(this.host, this.port);
+                        }catch(IOException ignored){}
+                    }
+                }
+            }
 
             JSONObject jo = new JSONObject(result);
 
@@ -251,6 +272,8 @@ public class GethubClient {
             Log.d(TAG, jo.toString());
         }catch(JSONException e){
             Log.e(TAG, e.getMessage());
+        }catch(IOException e){
+            throw new IOException("Cannot connect to server. " + e.getMessage());
         }catch (Exception e){
             e.printStackTrace();
         }

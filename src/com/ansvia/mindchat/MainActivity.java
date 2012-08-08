@@ -22,7 +22,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private static String TAG = "MainActivity";
     Button loginButton = null;
     Button logoutButton = null;
-    private ErrorHandler errorReceiver;
+    //private ErrorHandler errorReceiver;
     //private Intent svc;
     private Intent chatRoom = null;
     private EditText textUserName;

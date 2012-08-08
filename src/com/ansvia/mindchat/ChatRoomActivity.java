@@ -392,6 +392,29 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
         });
     }
 
+    private void showError(String msg){
+        Intent errorIntent = new Intent("error");
+        errorIntent.putExtra("data", msg);
+        sendBroadcast(errorIntent);
+    }
+
+    private void sendChatMessage(String message){
+
+        Intent msgSender = new Intent("send.message");
+        msgSender.putExtra("channel", channel);
+        msgSender.putExtra("message", message);
+        msgSender.putExtra("sessid", sessid);
+        sendBroadcast(msgSender);
+
+//        try {
+//            gethub.message(channel, message, sessid);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            showError("Cannot send chat message. " + e.getMessage());
+//        }
+
+    }
+
     /**
      * Method ini dipanggil ketika user tap button send.
      * untuk mengirim pesan.
@@ -401,12 +424,13 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     public void onClick(View view) {
         EditText text = (EditText)findViewById(R.id.inputMessage);
 
-        GethubClient gethub = GethubClient.getInstance();
+        //GethubClient gethub = GethubClient.getInstance();
 
         String message = text.getText().toString();
 
         if (message.length() > 0){
-            gethub.message(channel, message, sessid);
+
+            sendChatMessage(message);
 
             InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(text.getWindowToken(), 0);

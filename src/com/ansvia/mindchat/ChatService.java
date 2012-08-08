@@ -50,6 +50,7 @@ public class ChatService extends Service {
             boolean.class};
 //    private int FOREGROUND_ID = 1;
     private String password;
+    private ChatMessageSender msgSender;
 
 //
 //    public ChatService(String name) {
@@ -68,6 +69,23 @@ public class ChatService extends Service {
         public void onReceive(Context context, Intent intent) {
             GethubClient gethub = GethubClient.getInstance();
             gethub.logout();
+        }
+    }
+
+    private class ChatMessageSender extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            GethubClient gethub = GethubClient.getInstance();
+            String channelName = intent.getStringExtra("channel");
+            String message = intent.getStringExtra("message");
+            String _sessid = intent.getStringExtra("sessid");
+            try {
+                gethub.message(channelName, message, _sessid);
+            } catch (IOException e) {
+                e.printStackTrace();
+                showError(e.getMessage());
+            }
         }
     }
 
@@ -244,7 +262,10 @@ public class ChatService extends Service {
         //Log.d(TAG, "in onHandleIntent()");
 
         this.logoutEventReceiver = new LogoutEventReceiver();
+        this.msgSender = new ChatMessageSender();
+
         registerReceiver(this.logoutEventReceiver, new IntentFilter("logout"));
+        registerReceiver(this.msgSender, new IntentFilter("send.message"));
 
         //GethubClient gethub = GethubClient.getInstance();
 
@@ -263,7 +284,10 @@ public class ChatService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
         unregisterReceiver(logoutEventReceiver);
+        unregisterReceiver(msgSender);
+
         GethubClient gethub = GethubClient.getInstance();
         gethub.close();
 //        stopForegroundCompat(FOREGROUND_ID);
