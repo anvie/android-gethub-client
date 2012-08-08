@@ -5,7 +5,7 @@
 
 package com.ansvia.mindchat;
 
-import android.app.IntentService;
+import android.app.Service;
 import android.content.Intent;
 import android.util.Log;
 import org.json.JSONArray;
@@ -34,9 +34,9 @@ public class PacketHandler extends GethubClientDataReceiver {
     private GethubClient gethub = null;
     private String sessid = null;
     private String currentUserName = null;
-    private IntentService ctx = null;
+    private Service ctx = null;
 
-    public PacketHandler(IntentService ctx, GethubClient gethub, String sessid, String currentUserName){
+    public PacketHandler(Service ctx, GethubClient gethub, String sessid, String currentUserName){
         this.gethub = gethub;
         this.sessid = sessid;
         this.currentUserName = currentUserName;

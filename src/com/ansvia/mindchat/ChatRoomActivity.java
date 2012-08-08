@@ -28,6 +28,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedList;
 
 
@@ -46,7 +47,7 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     private String channel = null;
 
     LinearLayout chatContainer = null;
-    private LinkedList<String> participants = null;
+    private LinkedList<String> participants = new LinkedList<String>();
     private String userName;
     private BroadcastReceiver initHandler;
     private boolean initialized = false;
@@ -69,8 +70,8 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             if(!self){
 
                 NotificationManager nm = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
-                Notification ntf = new Notification(R.drawable.icon, text, System.currentTimeMillis());
-                ntf.flags |= Notification.FLAG_ONLY_ALERT_ONCE;
+                Notification ntf = new Notification(R.drawable.icon_grey, text, System.currentTimeMillis());
+                ntf.flags |= Notification.FLAG_ONLY_ALERT_ONCE | Notification.FLAG_ONGOING_EVENT;
                 //ntf.number += 1;
 
                 PendingIntent activity = PendingIntent.getActivity(ChatRoomActivity.this, 0, ChatRoomActivity.this.getIntent(), 0);
@@ -182,15 +183,14 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
             @Override
             public void onReceive(Context context, Intent intent) {
 
-                GethubClient gethub = GethubClient.getInstance();
+                //GethubClient gethub = GethubClient.getInstance();
 
                 sessid = intent.getStringExtra("sessid");
                 channel = intent.getStringExtra("channel");
                 userName = intent.getStringExtra("userName");
 
-                participants = gethub.participants(channel, sessid);
-
-                chatMessages = gethub.messages(channel, sessid);
+                Collections.addAll(participants, intent.getStringArrayExtra("participants"));
+                Collections.addAll(chatMessages, intent.getStringArrayExtra("chatMessages"));
 
                 findViewById(R.id.lblPleaseWait).setVisibility(View.INVISIBLE);
                 findViewById(R.id.inputMessage).setVisibility(View.VISIBLE);
@@ -298,6 +298,8 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
     private void initializeUi() {
         chatContainerFrame = (ScrollView)findViewById(R.id.chatContainerFrame);
         chatContainer = (LinearLayout)findViewById(R.id.chatContainer);
+
+        moveTaskToBack(true);
 
         Button btnSend = (Button)findViewById(R.id.btnSend);
         btnSend.setOnClickListener(this);

@@ -6,6 +6,7 @@
 package com.ansvia.mindchat;
 
 import android.util.Log;
+import com.ansvia.mindchat.exceptions.BadResponseException;
 import com.ansvia.mindchat.exceptions.UnauthorizedException;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -51,7 +52,7 @@ public class GethubClient {
      * @param host ip or host name.
      * @param port port number.
      */
-    public void connect(String host, int port){
+    public void connect(String host, int port) throws IOException {
 
         this.host = host;
         this.port = port;
@@ -94,7 +95,7 @@ public class GethubClient {
      * @param password password.
      * @return session id if success otherwise null.
      */
-    public String authorize(String userName, String password) throws UnauthorizedException {
+    public String authorize(String userName, String password) throws UnauthorizedException, BadResponseException, IOException {
         String resultStr = sendPacketInternal(String.format(AUTHORIZE, genId(), userName, password), 1024);
         String rv = null;
         try {
@@ -111,7 +112,8 @@ public class GethubClient {
             }
 
         }catch (JSONException e){
-            e.printStackTrace();
+            //e.printStackTrace();
+            throw new BadResponseException("Bad response from server. " + e.getMessage() + ". got response: `" + resultStr + "`");
         }
         return rv;
     }
@@ -145,8 +147,8 @@ public class GethubClient {
      * @param sessid id of session.
      * @return if success return string array of participants otherwise null.
      */
-    public LinkedList<String> participants(String channelName, String sessid){
-        LinkedList<String> rv = null;
+    public String[] participants(String channelName, String sessid){
+        LinkedList<String> rv = new LinkedList<String>();
 
         try {
             String result = sendPacketInternal(String.format(PARTICIPANTS, genId(), channelName, sessid), 1024);
@@ -167,7 +169,7 @@ public class GethubClient {
         }catch (Exception e){
             e.printStackTrace();
         }
-        return rv;
+        return rv.toArray(new String[rv.size()]);
     }
 
 
@@ -239,7 +241,12 @@ public class GethubClient {
             String result = sendPacketInternal(String.format(MESSAGE, genId(), channelName, sessid, message), 1024);
 
             JSONObject jo = new JSONObject(result);
-            jo = jo.getJSONObject("result");
+
+            try {
+                jo = jo.getJSONObject("result");
+            }catch (JSONException e){
+                rv = jo.getString("result").equals("sent");
+            }
 
             Log.d(TAG, jo.toString());
         }catch(JSONException e){
@@ -257,7 +264,7 @@ public class GethubClient {
      * @param sessid id of session.
      * @return array of pairing user name and message.
      */
-    public LinkedList<String> messages(String channelName, String sessid) {
+    public String[] messages(String channelName, String sessid) {
         LinkedList<String> rv = new LinkedList<String>();
         try {
             String result = sendPacketInternal(String.format(CHANNEL_LAST_MESSAGE, genId(), channelName, sessid), 1024*4);
@@ -275,7 +282,7 @@ public class GethubClient {
         }catch (Exception e){
             e.printStackTrace();
         }
-        return rv;
+        return rv.toArray(new String[rv.size()]);
     }
 
 
@@ -286,7 +293,7 @@ public class GethubClient {
      * @param data data to send.
      * @return string result (should decoded using json decoder).
      */
-    public String sendPacketInternal(String data, int packetSize){
+    public String sendPacketInternal(String data, int packetSize) throws IOException {
 
         String resultStr = "";
 
@@ -332,12 +339,8 @@ public class GethubClient {
      * @param host host name or ip address.
      * @param port port number.
      */
-    private void connectInternal(String host, int port) {
-        try {
-            socket = new Socket(host, port);
-        }catch (Exception e){
-            e.printStackTrace();
-        }
+    private void connectInternal(String host, int port) throws IOException {
+        this.socket = new Socket(host, port);
     }
 
     public void logout() {
