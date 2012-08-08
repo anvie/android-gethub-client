@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 
 
-
 public class ChatRoomActivity extends  Activity implements View.OnClickListener {
 
     private static final String TAG = "ChatRoomActivity";
@@ -415,4 +414,22 @@ public class ChatRoomActivity extends  Activity implements View.OnClickListener 
 
         text.setText("");
     }
+
+//
+//    private boolean isLastActivity() {
+//        final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+//        final List<ActivityManager.RunningTaskInfo> tasksInfo = am.getRunningTasks(1024);
+//
+//        final String ourAppPackageName = getPackageName();
+//        ActivityManager.RunningTaskInfo taskInfo;
+//        final int size = tasksInfo.size();
+//        for (int i = 0; i < size; i++) {
+//            taskInfo = tasksInfo.get(i);
+//            if (ourAppPackageName.equals(taskInfo.baseActivity.getPackageName())) {
+//                return taskInfo.numActivities == 1;
+//            }
+//        }
+//
+//        return false;
+//    }
 }
